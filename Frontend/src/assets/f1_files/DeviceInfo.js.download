@@ -1,0 +1,133 @@
+﻿function DeviceInfo() {
+    this.IsMobileDevice = false;
+    this.IsApp = false;
+    this.OS = "";
+    this.DeviceJson = "";
+    this.UserAgent = "";
+}
+
+function getUserAgent() {
+    var userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return userAgent;
+}
+
+function getMobileOperatingSystem() {
+    var userAgent = getUserAgent();
+
+    // Windows Phone must come first because its UA also contains "Android"
+    if (/windows phone/i.test(userAgent)) {
+        return "Windows Phone";
+    }
+
+    if (/android/i.test(userAgent)) {
+        return "Android";
+    }
+
+    // iOS detection from: http://stackoverflow.com/a/9039885/177710
+    if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+        return "iOS";
+
+        //https://apps.apple.com/in/app/living-liquidz/id1538391874
+    }
+
+    return "unknown";
+}
+
+
+var device = new DeviceInfo();
+device.UserAgent = getUserAgent();
+
+var os = getMobileOperatingSystem(); 
+
+if (os == "unknown") {
+    device.IsMobileDevice = false;
+    device.OS = "Unknown";
+}
+else {
+    device.IsMobileDevice = true;
+
+    if (os == "Android") {
+        if (typeof Android !== "undefined" && Android !== null) {
+            device.IsApp = true;
+            device.OS = "Android_App";
+            Android.getDeviceInfo();
+            Android.getDeviceInfo();
+            device.DeviceJson = Android.getDeviceInfo();
+        }
+        else {
+            device.OS = "Android_Web";
+        }
+    }
+
+    else if (os == "iOS") {
+        if (typeof webkit !== "undefined" && webkit !== null) {
+            device.IsApp = true;
+            device.OS = "IOS_App";
+            getDeviceInfo();
+        }
+        else {
+            device.OS = "IOS_Web";
+        }
+    }
+    else if (os == "Windows Phone") {
+        device.OS = "Windows Phone";
+    }
+    else {
+        device.OS = "Unknown";
+    }
+}
+
+function getDeviceInfo() {
+    webkit.messageHandlers.getDeviceInfo.postMessage("getDataFromiOS");
+}
+
+function getDataFromiOS(data) {
+    device.DeviceJson = data;
+}
+
+function isIOSWebView() {
+    var standalone = window.navigator.standalone,
+        userAgent = window.navigator.userAgent.toLowerCase(),
+        safari = /safari/.test(userAgent),
+        ios = /iphone|ipod|ipad/.test(userAgent);
+
+    if (ios) {
+        if (!standalone && safari) {
+            //browser
+        } else if (standalone && !safari) {
+            //standalone
+        } else if (!standalone && !safari) {
+            //uiwebview
+            return true;
+        };
+    } else {
+        //not iOS
+    };
+
+    return false;
+}
+
+function RegisterUserDevice() {
+
+    try {
+        //console.log(device);
+
+        $.ajax({
+            url: ajax_baseURL + 'UserDevice/RegisterDevice',
+            dataType: 'json',
+            data: '{ obj : ' + JSON.stringify(device) + '}',
+            type: 'POST',
+            contentType: "application/json; charset=utf-8",
+            success: function (data) {
+                //alert(data.data);
+            },
+            error: function (data) {
+                //alert('error');
+                console.log(data);
+            }
+        });
+    }
+    catch {
+
+    }
+}

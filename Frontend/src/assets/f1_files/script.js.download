@@ -1,0 +1,68 @@
+﻿
+//Set Cookie
+function setCookie(name, value, exp_days) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exp_days * 24 * 60 * 60 * 1000));
+    var expires = "expires=" + d.toGMTString();
+    document.cookie = name + "=" + value + ";" + expires + ";path=/";
+}
+
+//Get Cookie
+function getCookie(name) {
+    var cname = name + "=";
+    var decodedCookie = decodeURIComponent(document.cookie);
+    var ca = decodedCookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(cname) == 0) {
+            return c.substring(cname.length, c.length);
+        }
+    }
+    return "";
+}
+
+//Delete Cookie
+function deleteCookie(name) {
+    var d = new Date();
+    d.setTime(d.getTime() - (60 * 60 * 1000));
+    var expires = "expires=" + d.toGMTString();
+    document.cookie = name + "=;" + expires + ";path=/";
+}
+
+
+function getMyCity() {
+    return getCookie("CartCity");
+}
+
+function validateMyCity() {
+    var myCity = getMyCity();
+    if (!myCity) {
+        $("#modal-location-select").modal('show');
+    }
+    else {
+        $("#myCity").html(myCity);
+        $("#modal-location-select").modal('hide');
+    }
+}
+
+function setMyCity(city) {
+    if (getMyCity() != city) {
+        if (confirm("Are you sure you want to change the city ?")) {
+            //Update Cart
+
+            setCookie("CartCity", city, 1);
+            $("#modal-location-select").modal('hide');
+            validateMyCity();
+        }
+    }
+    else {
+        $("#modal-location-select").modal('hide');
+    }
+}
+
+$(document).ready(function () {
+    //validateMyCity();
+});

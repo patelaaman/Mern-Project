@@ -1,0 +1,1813 @@
+
+//var ajax_baseURL = 'https://localhost:44376/';
+
+; (function ($, window, document, undefined) {
+    'use strict';
+
+    window.createCookie = function (name, value, days) {
+        var expires = "";
+
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toGMTString();
+        }
+
+        //document.cookie = name + "=" + value + expires + "; path=/; domain=https://localhost:44376/";
+        document.cookie = name + "=" + value + expires + "; path=/; domain=" + ajax_baseURL;
+    }
+
+    window.getCookie = function (cname) {
+        var name = cname + "=";
+        var decodedCookie = decodeURIComponent(document.cookie);
+        var ca = decodedCookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) == 0) {
+                return c.substring(name.length, c.length);
+            }
+        }
+        return "";
+    }
+})(jQuery, window, document);
+
+function wbr_init() {
+    wbr_refresh();
+}
+
+function wbr_refresh() {
+    wbr_form_login();
+    wbr_cmp_add_to_cart();
+    wbr_bind_back_button();
+    wbr_misc_methods();
+    wbr_init_filters();
+    wbr_cmp_select_variation();
+    wbr_swiper_init();
+    wbr_form_add_new_address();
+    wbr_form_update_address();
+    wbr_clear_cart_handler();
+    wbr_search_menu();
+    wbr_typehead_search();
+    wbr_modal_state_handlers();
+    wbr_cmp_stock_notify();
+    wbr_google_places();
+}
+
+
+function loadJS(file) {
+    // DOM: Create the script element
+    var jsElm = document.createElement("script");
+    // set the type attribute
+    jsElm.type = "application/javascript";
+    // make the script element load file
+    jsElm.src = file;
+    // finally insert the element to the body element in order to load the script
+    document.body.appendChild(jsElm);
+}
+
+function wbr_google_places() {
+
+    loadJS('https://maps.googleapis.com/maps/api/js?key=AIzaSyCMoOcRWjtwoYCQVyNVI81QHA8ABk8n2Us&callback=initialize&libraries=places&v=weekly&channel=2');
+}
+
+// This sample uses the Places Autocomplete widget to:
+// 1. Help the user select a place
+// 2. Retrieve the address components associated with that place
+// 3. Populate the form fields with those address components.
+// This sample requires the Places library, Maps JavaScript API.
+// Include the libraries=places parameter when you first load the API.
+// For example: <script
+// src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB41DRUbKWJHPxaFjMAwdrzWzbVKartNGg&libraries=places">
+let autocomplete, ll_place;
+let ShipAddress;
+let $address_form = $('form.ll-address-form');
+
+function initialize() {
+
+    ShipAddress = document.querySelector("#ship-address");
+
+    if ($address_form.length == 1 && ShipAddress !== null) {
+
+        initAutocomplete();
+        // set events listeners 
+        $('.btn-change-location').on('click', function () {
+
+            $address_form.find('.ll-location-select').show();
+            $address_form.find('.ll-address-fields').hide();
+            $address_form.find('input#ship-address').val('').focus();
+        });
+    }
+
+    if ($('input#Latitude').val() != undefined) {
+        if (
+            $('input#Latitude').val().length != 0 &&
+            $('input#Longitude').val().length != 0 &&
+            $('input#geoaddress').val().length != 0 &&
+            $('input#State').val().length != 0 &&
+            $('input#City').val().length != 0 &&
+            $('input#place_id').val().length != 0
+        ) {
+            // enable edit mode
+            $address_form.find('.ll-location-select').hide();
+            $address_form.find('.ll-address-fields').show();
+            $address_form.find('.ll-selected-location').find('.geolocation').text($('input#geoaddress').val());
+            initMap();
+        }
+        else {
+            $address_form.find('.ll-location-select').show();
+            $address_form.find('.ll-address-fields').hide();
+        }
+    }
+}
+
+function initMap() {
+    const myLatLng = {
+        lat: parseFloat(document.querySelector("input#Latitude").value),
+        lng: parseFloat(document.querySelector("input#Longitude").value)
+    };
+
+    const LL_map = new google.maps.Map(document.getElementById("ll-map-container"), {
+        center: myLatLng,
+        disableDefaultUI: true,
+        scrollwheel: false,
+        navigationControl: false,
+        mapTypeControl: false,
+        scaleControl: false,
+        zoom: 17,
+        mapTypeId: "roadmap",
+        disableDoubleClickZoom: false,
+        zoomControl: true,
+        navigation: {
+            mouseWheelZoomEnabled: false,
+            browserTouchPanEnabled: false
+        }
+    });
+
+    let LL_marker = new google.maps.Marker({
+        //position: myLatLng,
+        map: LL_map,
+        position: LL_map.getCenter(),
+        draggable: false,
+        title: "Deliver Here",
+        icon: 'https://livingliquidz.com/Content/static/icons/marker-pin.png'
+    });
+
+    LL_map.addListener('center_changed', () => {
+        LL_marker.setPosition(LL_map.getCenter());
+    });
+
+    google.maps.event.addListener(LL_map, 'dragend', function () {
+        console.log(LL_map.getCenter());
+
+        LL_marker.setPosition(LL_map.getCenter());
+
+        document.querySelector("input#Latitude").value = LL_marker.getPosition().lat();
+        document.querySelector("input#Longitude").value = LL_marker.getPosition().lng();
+
+        const geocoder = new google.maps.Geocoder();
+
+        geocoder
+            .geocode({
+                location: {
+                    lat: LL_marker.getPosition().lat(),
+                    lng: LL_marker.getPosition().lng(),
+                }
+            })
+            .then((response) => {
+                if (typeof (response.results[0]) === 'object') {
+
+                    console.log(response.results[0]);
+
+                    document.querySelector("input#geoaddress").value = response.results[0].formatted_address;
+                    document.querySelector("input#place_id").value = response.results[0].place_id;
+
+
+                    $address_form.find('.ll-selected-location').find('.geolocation').text(response.results[0].formatted_address);
+
+                    for (const component of response.results[0].address_components) {
+                        const componentType = component.types[0];
+
+                        //console.log(component);
+
+                        switch (componentType) {
+                            case "premise": {
+                                break;
+                            }
+
+                            case "route": {
+                                break;
+                            }
+
+                            case "sublocality_level_2": {
+                                break;
+                            }
+
+                            case "sublocality_level_1": {
+                                break;
+                            }
+
+                            case "postal_code": {
+                                document.querySelector("#Pincode").value = component.long_name;
+                                break;
+                            }
+
+                            case "postal_code_suffix": {
+                                document.querySelector("#Pincode").value = component.long_name;
+                                break;
+                            }
+                            case "locality":
+                                document.querySelector("#City").value = component.long_name;
+                                break;
+                            case "administrative_area_level_1": {
+                                document.querySelector("#State").value = component.long_name;
+                                break;
+                            }
+                            // case "country":
+                            //     document.querySelector("#country").value = component.long_name;
+                            //     break;
+                        }
+                    }
+
+                } else {
+                    console.log("No results found");
+                }
+            })
+            .catch((e) => console.log("Geocoder failed due to: " + e));
+
+
+    });
+}
+
+function initAutocomplete() {
+    ShipAddress = document.querySelector("#ship-address");
+
+    const southwest = { lat: 16.082120, lng: 72.022668 };
+    const northeast = { lat: 20.259115, lng: 74.209213 };
+    //const northeast = { lat: 19.594238, lng: 74.209213 };
+    const mumbaiBounds = new google.maps.LatLngBounds(southwest, northeast);
+
+    // Create the autocomplete object, restricting the search predictions to
+    // addresses in the US and Canada.
+    autocomplete = new google.maps.places.Autocomplete(ShipAddress, {
+        bounds: mumbaiBounds,
+        strictBounds: true,
+        componentRestrictions: { country: ["in"] },
+        fields: ["place_id", "address_components", "geometry", "formatted_address", "name"]
+    });
+
+    ShipAddress.focus();
+    // When the user selects an address from the drop-down, populate the
+    // address fields in the form.
+    autocomplete.addListener("place_changed", ll_map_autocompleted);
+
+}
+
+function ll_map_autocompleted() {
+    // Get the place details from the autocomplete object.
+    ll_place = autocomplete.getPlace();
+
+    if (!ll_place.geometry || !ll_place.geometry.location) {
+        document.querySelector("#ship-address-error").innerHTML = '<div class="alert alert-danger fs-14 fw-500 px-2 py-1 rounded-0 border-0">Please select your location</div>';
+        return;
+    }
+
+    // clear error
+    document.querySelector("#ship-address-error").innerHTML = '';
+
+    //console.log(place);
+    document.querySelector("input#Latitude").value = ll_place.geometry.location.lat();
+    document.querySelector("input#Longitude").value = ll_place.geometry.location.lng();
+    document.querySelector("input#geoaddress").value = ll_place.formatted_address;
+    document.querySelector("input#place_id").value = ll_place.place_id;
+
+    // Get each component of the address from the place details,
+    // and then fill-in the corresponding field on the form.
+    // place.address_components are google.maps.GeocoderAddressComponent objects
+    // which are documented at http://goo.gle/3l5i5Mr
+    for (const component of ll_place.address_components) {
+        const componentType = component.types[0];
+
+        //console.log(component);
+
+        switch (componentType) {
+            case "premise": {
+                break;
+            }
+
+            case "route": {
+                break;
+            }
+
+            case "sublocality_level_2": {
+                break;
+            }
+
+            case "sublocality_level_1": {
+                break;
+            }
+
+            case "postal_code": {
+                document.querySelector("#Pincode").value = component.long_name;
+                if ($("#Pincode option[value='" + component.long_name + "']").length == 0) {
+                    $("#ship-address-error").html("<span class='text-danger'> Apologies, we currently do not deliver to your pincode " + component.long_name + "</span>");
+                    /*$("#btn-change-location").trigger("click");*/
+                    $("#ship-address").val("");
+                    return;
+                }
+                break;
+            }
+
+            case "postal_code_suffix": {
+                document.querySelector("#Pincode").value = component.long_name;
+                break;
+            }
+            case "locality":
+                document.querySelector("#City").value = component.long_name;
+                break;
+            case "administrative_area_level_1": {
+                document.querySelector("#State").value = component.long_name;
+                break;
+            }
+            // case "country":
+            //     document.querySelector("#country").value = component.long_name;
+            //     break;
+        }
+    }
+
+    $address_form.find('.ll-location-select').hide();
+    $address_form.find('.ll-address-fields').show();
+    $address_form.find('.ll-selected-location').find('.geolocation').text(ll_place.formatted_address);
+
+    initMap();
+}
+
+
+function wbr_modal_state_handlers() {
+    $(window).on('popstate', function (event) {
+        console.log(event.state);
+        if (event.state !== null) {
+            $('.modal').modal('hide');
+        }
+    });
+
+
+    $('.modal').each(function (index, modal) {
+        $(modal).on('show.bs.modal', function () {
+            history.pushState({ modal: $(modal).attr('id') }, '', window.location.href + '#modal');
+        }).on('hide.bs.modal', function () {
+            if (window.location.hash === '#modal') {
+                history.back();
+            }
+        });
+    });
+}
+
+
+function wbr_typehead_search() {
+
+    var url = ajax_baseURL + "/App/TypeHeadSearchProduct";
+
+    $.typeahead({
+        input: '.wbr-main-search',
+        minLength: 3,
+        order: "asc",
+        dynamic: true,
+        delay: 500,
+        maxItem: 8,
+        backdrop: {
+            "background-color": "#fff"
+        },
+        matcher: function (item) {
+            // Always return true to show all items
+            return true;
+        },
+        template: function (query, item) {
+            return '<span class="row">' +
+                // '<span class="avatar">' +
+                //     '<img src="{{avatar}}">' +
+                // "</span>" +
+                '<span class="title">{{title}}</span>' +
+                '<span class="id">{{type}}</span>' +
+                "</span>";
+        },
+        emptyTemplate: "no result for {{query}}",
+        source: {
+            products: {
+                display: "title",
+                href: ajax_baseURL + "{{link}}",
+                ajax: function (query) {
+                    return {
+                        type: "GET",
+                        url: url,
+                        path: "data.products",
+                        data: {
+                            q: "{{query}}"
+                        }
+                    }
+                }
+
+            },
+            categories: {
+                display: "title",
+                href: ajax_baseURL + "{{link}}",
+                ajax: [{
+                    type: "GET",
+                    url: url,
+                    data: {
+                        q: "{{query}}"
+                    }
+                }, "data.categories"],
+                template: function (query, item) {
+                    return '<span class="row">' +
+                        // '<span class="avatar">' +
+                        //     '<img src="{{avatar}}">' +
+                        // "</span>" +
+                        '<span class="title">{{title}}</span>' +
+                        '<span class="id">{{type}}</span>' +
+                        "</span>";
+                }
+            }
+        },
+        callback: {
+            onClick: function (node, a, item, event) {
+
+                // You can do a simple window.location of the item.href
+                //alert(JSON.stringify(item));
+
+            },
+            onLeave: function (node, a, item, event) {
+
+                if (event.keyCode === 13) {
+                    event.preventDefault();
+                    redirect_to_searchproduct($(".wbr-main-search").val());
+                }
+            },
+            onSendRequest: function (node, query) {
+                console.log('request is sent')
+            },
+            onReceiveRequest: function (node, query) {
+                console.log('request is received')
+            }
+        },
+        //debug: true
+    });
+
+}
+
+function wbr_search_menu() {
+    $('[data-search]').on('keyup', function () {
+        var searchVal = $(this).val();
+        var $search_result = $('.search-results > .list-group');
+        $search_result.html('');
+
+        if (searchVal != '' && searchVal.length > 2) {
+
+            // $('[data-filter-item]').each(function(i, e){
+            //     var str = $(e).attr('data-filter-name');
+
+            //     if(str.indexOf(searchVal) !== -1){
+            //         $(e).removeClass('disabled');
+            //     }
+            // });
+
+            var url = ajax_baseURL + "/App/SearchProduct";
+
+            $.ajax({
+                url: url,
+                data: JSON.stringify({ keyword: searchVal }),
+                dataType: "json",
+                type: "POST",
+                contentType: "application/json; charset=utf-8",
+                beforeSend: function () { },
+                success: function (response) {
+                    if (response.Success) {
+
+                        for (i = 0; i < response.Data.length; i++) {
+                            var item = response.Data[i];
+                            $search_result.append('<a href="' + item.guid + '" class="default-link"><span>' + item.title + '</span><i class="flaticon-next"></i></a>');
+                        }
+                    }
+                    else {
+                        console.log(response.Message);
+                        Pace.stop();
+                    }
+                },
+                complete: function () {
+                    Pace.stop();
+                    //Sending data for Site Search to GA
+                    ga('send', 'pageview', 'search.php?search=' + searchVal);
+                },
+                error: function (response) {
+                    console.log(response);
+                    Pace.stop();
+                },
+                failure: function (response) {
+                    Pace.stop();
+                    console.log(response);
+                }
+            });
+
+            //if (typeof (window.wbr_search_db) == 'undefined') {
+            //    $.ajax({
+            //        url: url,
+            //        method: 'POST',
+            //        dataType: 'jsonp'
+            //    }).done(function (data_obj) {
+
+            //        console.log(data_obj);
+
+            //        if (typeof (data_obj) == 'object') {
+
+            //            window.wbr_search_db = data_obj;
+
+            //            wbr_show_search_output(searchVal, $search_result);
+            //        }
+            //        else {
+            //        }
+
+            //    }).fail(function (XMLHttpRequest) {
+            //        //hide loading sign
+            //        console.log(XMLHttpRequest.responseText);
+            //    });
+            //}
+            //else {
+            //    console.log('yo');
+            //    wbr_show_search_output(searchVal, $search_result);
+            //}
+
+
+            //$('[data-filter-item][data-filter-name*="' + searchVal.toLowerCase() + '"]').removeClass('disabled');
+        }
+
+    });
+
+    $('[data-search]').on('keypress', function (e) {
+        var key = e.which;
+        if (key == 13)  // the enter key code
+        {
+            event.preventDefault();
+            redirect_to_searchproduct($(this).val());
+        }
+    });
+}
+
+function redirect_to_searchproduct(search) {
+    if (search && search.length >= 3) {
+        window.location.href = ajax_baseURL + "/Products/Search/" + search;
+    }
+}
+
+
+function wbr_show_search_output(searchVal, $search_result) {
+    //console.log(window.wbr_search_db);
+    var x = 0;
+    for (var i in window.wbr_search_db) {
+        var a = window.wbr_search_db[i];
+
+        //console.log(a.keywords.indexOf(searchVal) !== -1);
+        var regex = new RegExp(searchVal, "i");
+
+        if (a.keywords.match(regex)) {
+            x++;
+            $search_result.append('<a href="' + a.guid + '" class="default-link"><span>' + a.title + '</span><i class="flaticon-next"></i></a>');
+        }
+    }
+
+}
+
+function wbr_swiper_init() {
+    $(document).delegate('[data-href]', 'click', function () {
+        if (typeof (window.smoothState) !== 'undefined') {
+            window.smoothState.load($(this).attr('data-href'));
+        }
+        else {
+            window.location = $(this).attr('data-href');
+        }
+    });
+    //Carousel Sliders
+    window.webbler_swiper_blocks = new Swiper('.webbler-swiper-blocks', {
+        // navigation: {
+        //   nextEl: '.webbler-swiper-1 .swiper-button-next',
+        //   prevEl: '.webbler-swiper-1 .swiper-button-prev',
+        // },
+        // pagination: {
+        //     el: '.webbler-swiper-1 .swiper-pagination',
+        //     dynamicBullets: true,
+        // },
+        freeMode: true,
+        centeredSlides: false,
+        slidesPerView: 'auto',
+        spaceBetween: 0,
+        loop: false,
+        autoHeight: true,
+        //freeModeMomentumRatio: 0.25,
+        // autoplay: {
+        //     delay: 2500,
+        //     disableOnInteraction: true,
+        // }                
+    });
+
+
+    window.webbler_swiper_banner = new Swiper('.webbler-swiper-banner', {
+        // navigation: {
+        //   nextEl: '.webbler-swiper-1 .swiper-button-next',
+        //   prevEl: '.webbler-swiper-1 .swiper-button-prev',
+        // },
+        pagination: false,
+        freeMode: false,
+        centeredSlides: true,
+        slidesPerView: 'auto',
+        spaceBetween: 0,
+        loop: true,
+        autoHeight: true,
+        autoplay: {
+            delay: 2500,
+        },
+    });
+}
+
+function wbr_parse_formdata($form) {
+    var paramObj = {};
+    $.each($form.serializeArray(), function (_, kv) {
+        paramObj[kv.name] = kv.value;
+    });
+    return paramObj;
+}
+
+function wbr_bind_back_button() {
+    $('[data-back]').off('click', "**").on('click', function (event) {
+        event.preventDefault();
+        window.history.back();
+    });
+}
+
+//function wbr_bind_back_button() {
+
+//    $('[data-back]').off('click', "**").on('click', function () {
+//        //var back_binded = window.back_binded;
+
+//        //console.log(window.location);
+
+//        // if(typeof(document.referrer) !== 'undefined' && document.referrer.indexOf("livingliquidz.com") == -1) {
+//        //     //first pageview of the session
+//        //     console.log('go to home');
+//        //     window.smoothState.load('https://livingliquidz.com/');
+//        // }
+//        // else {
+//        //     console.log('back');
+//        window.history.back();
+//        // }
+
+
+//    });
+
+//}
+
+
+function wbr_form_update_address() {
+
+    var $delete_button = $('.wbr-btn-delete-address');
+
+    $delete_button.off('click', "**").on('click', function () {
+
+        var confirm_resp = confirm('Click OK to delete the address.');
+
+        if (confirm_resp) {
+
+            var $ths = $(this);
+            var id = $ths.attr('data-id');
+
+            Pace.restart();
+
+            $.ajax({
+                url: window.ajaxurl,
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    'action': 'delete_address',
+                    'id': id
+                }
+
+            }).done(function (data_obj) {
+
+                //console.log(data_obj);
+                var $content = $ths.closest('.content');
+                var $card = $ths.closest('.card');
+
+                if (typeof (data_obj.result) !== null && data_obj.result === true) {
+                    $card.append('<h3 class="text-center py-3">Address deleted!</h3>');
+                    $content.remove();
+                }
+                else {
+                    Pace.stop();
+                    $card.append('<div class="text-center font-12 text-danger mb-3">Opps! something isn\'t right, couldn\'t delete address.</div>');
+                }
+
+            }).fail(function (XMLHttpRequest) {
+                //hide loading sign
+                Pace.stop();
+                console.log(XMLHttpRequest.responseText);
+            });
+
+        }
+    });
+
+}
+
+
+
+function wbr_form_add_new_address() {
+    return;
+    var $form = $('.wbr-form-add-new-address');
+    var $submit_button = $form.find('.wbr-btn-submit');
+
+    $submit_button.off('click', "**").on('click', function () {
+        var $ths = $(this);
+
+        var formdata = wbr_parse_formdata($form);
+
+        $form.find('.error-text').html('');
+
+        //console.log(formdata);
+
+        var continue_url = $ths.attr('data-continue');
+
+        //$('#preloader').removeClass('preloader-hide');
+
+        Pace.restart();
+
+        $.ajax({
+            url: window.ajaxurl,
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                'action': 'add_update_address',
+                'data': formdata
+            }
+
+        }).done(function (data_obj) {
+
+            //console.log(data_obj);
+
+            if (typeof (data_obj.result) !== null && data_obj.result === true) {
+                //console.log(continue_url);
+                window.location = continue_url;
+            }
+            else {
+                Pace.stop();
+
+                if (typeof (data_obj.errors) !== 'undefined') {
+
+                    for (var field in data_obj.errors) {
+
+                        var value = data_obj.errors[field];
+
+                        $form.find('#wbr-input-' + field).closest('.input-style').find('.error-text').html(value);
+
+                    }
+
+                }
+            }
+
+        }).fail(function (XMLHttpRequest) {
+            //hide loading sign
+            Pace.stop();
+            console.log(XMLHttpRequest.responseText);
+        });
+    });
+
+}
+
+
+
+function wbr_form_login() {
+
+    var $form = $('.wbr-form-login');
+    var $otp_container = $form.find('.wbr-inp-otp-container');
+    var $send_otp_button = $form.find('.wbr-btn-send-otp');
+    var $login_button = $form.find('.wbr-btn-login');
+    var $message_box = $form.find('.message-box');
+
+    //var $resend_otp = $('<a href="javascript:void();">Resend OTP</a>');
+    var $resend_otp = $('#resend-otp');
+    $resend_otp.off('click', "**").on('click', function () {
+        alert("Resend");
+        $send_otp_button.trigger('click');
+    });
+
+
+    //$login_button.off('click', "**").on('click', function () {
+
+    //    $message_box.html('');
+    //    var mobile_value = $form.find('.wbr-inp-mobile').val();
+    //    var otp_value = $form.find('.wbr-inp-otp').val();
+    //    var continue_url = $form.find('.wbr-inp-continue').val();
+
+    //    if (!mobile_value.match('[1-9]{1}[0-9]{9}') || mobile_value.length != 10) {
+
+    //        Pace.stop();
+    //        $message_box.html('<div class="text-danger">Ops! Invalid Mobile No.</div>');
+    //        $message_box.append($resend_otp);
+
+    //        return;
+    //    }
+    //    else if (!otp_value.match('[0-9]{6}') || otp_value.length != 6) {
+
+    //        Pace.stop();
+    //        $message_box.html('<div class="text-danger">Enter 6 digit OTP as received.</div>');
+    //        $message_box.append($resend_otp);
+
+    //        return;
+    //    }
+
+    //    $login_button.hide();
+
+    //    //console.log(mobile_value + ' shyam');
+
+    //    Pace.restart();
+
+    //    $.ajax({
+    //        url: window.ajaxurl,
+    //        method: 'POST',
+    //        dataType: 'json',
+    //        data: {
+    //            'action': 'signin_mobile_otp',
+    //            'data': {
+    //                'mobile': mobile_value,
+    //                'otp': otp_value,
+    //            }
+    //        }
+
+    //    }).done(function (data_obj) {
+
+    //        console.log(data_obj);
+
+    //        if (typeof (data_obj.result) !== null && data_obj.result === true) {
+    //            //console.log(continue_url);
+    //            window.location = continue_url;
+    //        }
+    //        else {
+    //            Pace.stop();
+    //            $login_button.show();
+    //            $message_box.html('<div class="text-danger">' + data_obj.error + '</div>');
+    //            $message_box.append($resend_otp);
+    //        }
+
+    //    }).fail(function (XMLHttpRequest) {
+    //        //hide loading sign
+
+    //        $login_button.show();
+    //        $message_box.html('<div class="text-danger">Ops! Something went wrong, try after sometime.</div>');
+    //        Pace.stop();
+    //        console.log(XMLHttpRequest.responseText);
+    //    });
+    //});
+
+    $send_otp_button.off('click', "**").on('click', function () {
+
+        var mobile_value = $form.find('.wbr-inp-mobile').val();
+        var otp_value = $form.find('.wbr-inp-otp').val();
+        $message_box.html('');
+
+        if (!mobile_value.match('[1-9]{1}[0-9]{9}')) {
+
+            Pace.stop();
+            $message_box.html('<div class="text-danger">Ops! Invalid Mobile No.</div>');
+
+            return;
+        }
+
+        Pace.restart();
+        $send_otp_button.hide();
+
+        //$form.find('.wbr-inp-otp').val('');        
+
+        var url = ajax_baseURL + "/Account/SendOTP";
+
+        $.ajax({
+            url: url,
+            data: JSON.stringify({ mobile: mobile_value }),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function () { },
+            success: function (data) {
+                if (data.Success) {
+
+                    $send_otp_button.hide();
+
+                    $otp_container.show();
+                    $login_button.show();
+                    $form.find('.wbr-inp-otp').focus();
+
+                    //$message_box.html($resend_otp);
+                }
+                else {
+                    console.log(data.Message);
+                    Pace.stop();
+                    $message_box.html('<div class="text-danger">Ops! Invalid Mobile No.</div>');
+                }
+            },
+            complete: function () {
+                Pace.stop();
+            },
+            error: function (response) {
+                console.log(response);
+                Pace.stop();
+            },
+            failure: function (response) {
+                $send_otp_button.show();
+                Pace.stop();
+                console.log(response);
+                $message_box.html('<div class="text-danger">Ops! Invalid Mobile No.</div>');
+            }
+        });
+
+        //$.ajax({
+        //    url: url,
+        //    data: JSON.stringify({ mobile: mobile_value }),
+        //    method: 'POST',
+        //    dataType: 'json'
+        //}).done(function (data_obj) {
+
+        //    console.log(data_obj);
+        //    Pace.stop();
+
+        //    if (typeof (data_obj.result) !== null && data_obj.result === true) {
+
+        //        $send_otp_button.hide();
+
+        //        $otp_container.show();
+        //        $login_button.show();
+
+
+        //        $message_box.html($resend_otp);
+
+
+        //    }
+        //    else {
+
+        //        //data_obj.error;
+        //        Pace.stop();
+        //        $message_box.html('<div class="text-danger">Ops! Invalid Mobile No.</div>');
+        //    }
+
+        //}).fail(function (XMLHttpRequest) {
+        //    //hide loading sign
+        //    $send_otp_button.show();
+        //    Pace.stop();
+        //    console.log(XMLHttpRequest.responseText);
+        //});
+    });
+
+
+}
+
+function wbr_cmp_add_to_cart() {
+
+    $('.btn-favorites').off('click', "**").on('click', function () {
+        var $ths = $(this);
+        var product_id = $ths.attr('data-product');
+        var mode = $ths.attr('data-mode');
+        var status = $ths.attr('data-status');
+
+        var action = "add_to_favorites";
+        if (status == "1") {
+            action = "remove_from_favorites";
+        }
+
+        Pace.restart();
+
+        var url = ajax_baseURL + "/App/AddToFavorites";
+
+        $.ajax({
+            url: url,
+            data: JSON.stringify({ action: action, ProductID: product_id }),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function () { },
+            success: function (data) {
+                if (data.Success) {
+
+                    if (action == "add_to_favorites") {
+                        $ths.removeClass('btn-wine wrb-add-to-favorites').addClass('btn-outline-wine').addClass("wrb-remove-from-favorites").html('<i class="flaticon-heart-shape-silhouette text-danger"></i>');
+                        $ths.attr("data-status", "1");
+                        $ths.blur();
+                    }
+                    else {
+                        $ths.removeClass('btn-outline-wine wrb-remove-from-favorites').addClass('btn-wine').addClass("wrb-add-to-favorites").html('<i class="flaticon-love"></i>');
+                        $ths.attr("data-status", "0");
+                    }
+
+                    $ths.closest('.card').remove();
+
+                }
+                else {
+                    console.log(data.Message);
+                    Pace.stop();
+                }
+            },
+            complete: function () {
+                Pace.stop();
+            },
+            error: function (response) {
+                console.log(response);
+                Pace.stop();
+            },
+            failure: function (response) {
+                Pace.stop();
+                console.log(response);
+            }
+        });
+
+    });
+
+    //$('.wrb-remove-from-favorites').off('click', "**").on('click', function () {
+    //    var $ths = $(this);
+    //    var product_id = $ths.attr('data-product');
+    //    var mode = $ths.attr('data-mode');
+
+    //    Pace.restart();
+
+    //    var url = ajax_baseURL + "/App/AddToFavorites";
+
+    //    $.ajax({
+    //        url: url,
+    //        data: JSON.stringify({ action: 'remove_from_favorites', ProductID : product_id}),
+    //        dataType: "json",
+    //        type: "POST",
+    //        contentType: "application/json; charset=utf-8",
+    //        beforeSend: function () { },
+    //        success: function (data) {
+    //            if (data.Success) {
+    //                $ths.closest('.card').remove();
+    //                $ths.removeClass('btn-outline-wine wrb-remove-from-favorites').addClass('btn-wine').addClass("wrb-add-to-favorites").html('<i class="flaticon-love"></i>');
+    //            }
+    //            else {
+    //                console.log(data.Message);
+    //                Pace.stop();
+    //            }
+    //        },
+    //        complete: function () {
+    //            Pace.stop();
+    //        },
+    //        error: function (response) {
+    //            console.log(response);
+    //            Pace.stop();
+    //        },
+    //        failure: function (response) {
+    //            Pace.stop();
+    //            console.log(response);
+    //        }
+    //    });
+
+
+
+    //    //$.ajax({
+    //    //    url: window.ajaxurl,
+    //    //    method: 'POST',
+    //    //    dataType: 'json',
+    //    //    data: {
+    //    //        'action': 'remove_from_favorites',
+    //    //        'product_id': product_id
+    //    //    }
+
+    //    //}).done(function (data_obj) {
+
+    //    //    //console.log(data_obj);
+    //    //    Pace.stop();
+
+    //    //    if (typeof (data_obj.result) !== null && data_obj.result === true) {
+
+    //    //        if (typeof (mode) !== 'undefined' && mode === 'product') {
+    //    //            window.location = window.location.href;
+    //    //        }
+    //    //        else {
+    //    //            $ths.closest('.card').remove();
+    //    //        }
+    //    //    }
+
+    //    //}).fail(function (XMLHttpRequest) {
+    //    //    //hide loading sign
+    //    //    Pace.stop();
+    //    //    console.log(XMLHttpRequest.responseText);
+    //    //});
+
+    //});
+
+
+
+    //$('.wrb-add-to-favorites').off('click', "**").on('click', function () {
+    //    var $ths = $(this);
+    //    var product_id = $ths.attr('data-product');
+    //    var mode = $ths.attr('data-mode');
+
+    //    Pace.restart();
+
+    //    var url = ajax_baseURL + "/App/AddToFavorites";
+
+    //    $.ajax({
+    //        url: url,
+    //        data: JSON.stringify({ action: 'add_to_favorites', ProductID: product_id }),
+    //        dataType: "json",
+    //        type: "POST",
+    //        contentType: "application/json; charset=utf-8",
+    //        beforeSend: function () { },
+    //        success: function (data) {
+    //            if (data.Success) {
+    //                $ths.removeClass('btn-wine wrb-add-to-favorites').addClass('btn-outline-wine').addClass("wrb-remove-from-favorites").html('<i class="flaticon-heart-shape-silhouette text-danger"></i>');
+    //                $ths.blur();
+    //            }
+    //            else {
+    //                console.log(data.Message);
+    //                Pace.stop();
+    //            }
+    //        },
+    //        complete: function () {
+    //            Pace.stop();
+    //        },
+    //        error: function (response) {
+    //            console.log(response);
+    //            Pace.stop();
+    //        },
+    //        failure: function (response) {
+    //            Pace.stop();
+    //            console.log(response);
+    //        }
+    //    });
+
+    //    //$.ajax({
+    //    //    url: window.ajaxurl,
+    //    //    method: 'POST',
+    //    //    dataType: 'json',
+    //    //    data: {
+    //    //        'action': 'add_to_favorites',
+    //    //        'product_id': product_id
+    //    //    }
+
+    //    //}).done(function (data_obj) {
+
+    //    //    //console.log(data_obj);
+    //    //    Pace.stop();
+
+    //    //    if (typeof (data_obj.result) !== null && data_obj.result === true) {
+    //    //        $ths.removeClass('btn-wine wrb-add-to-favorites').addClass('btn-outline-wine').html('<i class="flaticon-heart-shape-silhouette text-danger"></i>');
+    //    //        $ths.blur();
+    //    //    }
+
+    //    //}).fail(function (XMLHttpRequest) {
+    //    //    //hide loading sign
+    //    //    Pace.stop();
+    //    //    console.log(XMLHttpRequest.responseText);
+    //    //});
+
+    //});
+
+
+
+
+    $('.wbr-cmp-add-to-cart').each(function (i, e) {
+        var $cmp = $(e);
+        var $btn_cart = $cmp.find('[data-action="add-to-cart"]');
+        var $stepper = $cmp.find('.wbr-cmp-stepper');
+        var $input = $stepper.find('input');
+        var $btn_increase = $stepper.find('[data-action="increase-from-cart"]');
+        var $btn_decrease = $stepper.find('[data-action="decrease-from-cart"]');
+
+        var product_id = $cmp.attr('data-product');
+
+
+        $btn_cart.off('click', "**").on('click', function () {
+
+            // now retrieve values
+            var variation_id = $cmp.attr('data-variation');
+            var min_quantity = $cmp.attr('data-min-quantity');
+            var max_quantity = $cmp.attr('data-max-quantity');
+
+
+            $btn_cart.hide();
+            $stepper.show();
+            $input.val(1);
+            $cmp.attr('data-cart', 1);
+            $('#variation-' + variation_id).attr('data-cart', 1);
+            wbr_action_manage_cart(product_id, variation_id, 1, 'increase');
+        });
+        $btn_increase.off('click', "**").on('click', function () {
+
+            // now retrieve values
+            var variation_id = $cmp.attr('data-variation');
+            var min_quantity = $cmp.attr('data-min-quantity');
+            var max_quantity = $cmp.attr('data-max-quantity');
+
+            //wbr_reload_if_cart_page($(this));
+
+            var q = parseInt($input.val());
+            var new_q = q + 1;
+            $input.val(new_q);
+            $cmp.attr('data-cart', new_q);
+            $('#variation-' + variation_id).attr('data-cart', new_q);
+            wbr_action_manage_cart(product_id, variation_id, new_q, 'increase');
+            ga('send', 'pageview', '/add-to-cart');
+        });
+        $btn_decrease.off('click', "**").on('click', function () {
+
+            // now retrieve values
+            var variation_id = $cmp.attr('data-variation');
+            var min_quantity = $cmp.attr('data-min-quantity');
+            var max_quantity = $cmp.attr('data-max-quantity');
+
+            //wbr_reload_if_cart_page($(this));
+
+            var q = parseInt($input.val());
+            var new_q = q - 1;
+            if (q == 1) {
+                $btn_cart.show();
+                $stepper.hide();
+            }
+            $input.val(new_q);
+            $cmp.attr('data-cart', new_q);
+            $('#variation-' + variation_id).attr('data-cart', new_q);
+            wbr_action_manage_cart(product_id, variation_id, new_q, 'decrease');
+        });
+    });
+}
+
+
+
+
+function wbr_reload_if_cart_page($el) {
+
+    var numItems = $('.wbr-cart-items').length;
+    if (numItems > 0) {
+        $('.wbr-cart-link')[0].click();
+    }
+
+    //if ($el.closest('.card').hasClass('wbr-cart-items')) {
+    //    $('.wbr-cart-link')[0].click();
+    //    // window.smoothState.clear();
+    //    // window.cart_go_back = true;
+    //    // //window.history.back();
+    //    // window.smoothState.load($('.wbr-cart-link').attr('href'));
+
+    //}
+}
+
+
+function wbr_cmp_select_variation() {
+
+    $('.wbr-btn-select-variation').off('click', "**").on('click', function () {
+        var $cmp = $(this);
+        var $card_container = $cmp.closest('.card');
+        var $price_container = $card_container.find('.wbr-cmp-product-card-price');
+        var $view_toggle = $card_container.find('.wbr-cmp-variation-view-toggle');
+        var $add_to_cart_cmp = $card_container.find('.wbr-cmp-add-to-cart');
+
+        var $btn_cart = $add_to_cart_cmp.find('[data-action="add-to-cart"]');
+        var $stepper = $add_to_cart_cmp.find('.wbr-cmp-stepper');
+        var $input = $stepper.find('input');
+
+        var $stock_notify = $card_container.find('.wbr-cmp-stock-notify');
+        var $stock_notify_btn = $stock_notify.find('.wbr-cmp-stock-notify-btn');
+
+        $card_container.find('.wbr-btn-select-variation').removeClass('active');
+        $cmp.addClass('active');
+
+        $view_toggle.find('span').html($cmp.html());
+
+        var cart_quantity = $cmp.attr('data-cart');
+        var in_stock = ($cmp.attr('data-in-stock') == "True");
+
+        //alert(in_stock);
+
+        if (in_stock == true && cart_quantity > 0) {
+            $btn_cart.hide();
+            $stepper.show();
+        }
+        else {
+
+            if (in_stock == true) {
+                $btn_cart.html("ADD TO CART");
+                $btn_cart.prop('disabled', false);
+                $stock_notify.hide();
+            }
+            else {
+                $btn_cart.html("OUT OF STOCK");
+                $btn_cart.prop('disabled', true);
+                $stock_notify_btn.html("Notify when in stock");
+                $stock_notify.show();
+            }
+
+            $btn_cart.show();
+            $stepper.hide();
+        }
+
+        $input.val(cart_quantity);
+
+        // now retrieve values from variation and set it to cart cmp
+        $add_to_cart_cmp.attr('data-variation', $cmp.attr('data-variation'));
+        $add_to_cart_cmp.attr('data-cart', cart_quantity);
+        $add_to_cart_cmp.attr('data-max-quantity', $cmp.attr('data-max-quantity'));
+        $add_to_cart_cmp.attr('data-min-quantity', $cmp.attr('data-min-quantity'));
+
+        $stock_notify_btn.attr('data-variation', $cmp.attr('data-variation'));
+
+
+        $price_container.html($cmp.attr('data-price-label'));
+
+
+    });
+}
+
+
+
+function wbr_cmp_stock_notify() {
+
+    $('.wbr-cmp-stock-notify-btn').off('click', "**").on('click', function () {
+
+        Pace.restart();
+        var $btn = $(this);
+        $(this).html("<span class='text-success'>please wait...</span>");
+
+        var url = ajax_baseURL + "/App/StockNotify";
+        var ProductVariationID = $(this).attr("data-variation");
+
+        $.ajax({
+            url: url,
+            data: JSON.stringify({ ProductVariationID: ProductVariationID }),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function () { },
+            success: function (data) {
+
+                if (data.Success) {
+                    $($btn).html("<span class='text-success'>You will be notified !</span>");
+                }
+                else {
+                    console.log(data.Message);
+                    Pace.stop();
+                    $($btn).html("<span class='text-success'>Try again later</span>");
+                }
+            },
+            complete: function () {
+                Pace.stop();
+            },
+            error: function (response) {
+                console.log(response);
+                Pace.stop();
+            },
+            failure: function (response) {
+                Pace.stop();
+                console.log(response);
+            }
+        });
+    });
+}
+
+var getUrlParameter = function getUrlParameter(sParam) {
+    var sPageURL = window.location.search.substring(1),
+        sURLVariables = sPageURL.split('&'),
+        sParameterName,
+        i;
+
+    for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+            return sParameterName[1] === undefined ? true : decodeURIComponent(sParameterName[1]);
+        }
+    }
+};
+
+function wbr_init_filters() {
+
+    var $btn_apply = $('.wbr-fliter-apply');
+    var query = '';
+
+    $btn_apply.off('click', "**").on('click', function () {
+
+        var filter_attr_CollectionIDs = ($('.wbr-filter-input:checked').map(function () { return this.value; }).get().join(','));
+        //alert(filter_attr_CollectionIDs);
+        $("#hf_filter_attr_CollectionIDs").val(filter_attr_CollectionIDs);
+        $("#FilterForm").submit();
+    });
+
+
+    var $sortby = $('[data-sortby]');
+    $sortby.off('click', "**").on('click', function () {
+        var sortby = $(this).attr('data-sortby');
+        SortProductsBy(sortby)
+    });
+
+    var $btn_resetFilter = $('.wbr-reset-filter');
+    $btn_resetFilter.off('click', "**").on('click', function () {
+        $("#hf_filter_attr_CollectionIDs").val("");
+        $("#FilterForm").submit();
+    });
+
+}
+
+function SortProductsBy(sortby) {
+    $("#hf_sort_by").val(sortby);
+    $("#FilterForm").submit();
+}
+
+function wbr_action_manage_cart(product_id, variation_id, new_quantity, mode) {
+    //let args = Array.prototype.slice.call(arguments);
+    Pace.restart();
+    //alert(product_id);
+    //alert(variation_id);
+    //alert(new_quantity);
+    //alert(mode);
+    //alert(JSON.stringify({ product_id: product_id, variation_id: variation_id, quantity: new_quantity, mode: mode }));
+    //alert(ajax_baseURL);
+    var url = ajax_baseURL + "/Cart/AddItem";
+    //alert(url);
+
+    $.ajax({
+        url: url,
+        data: JSON.stringify({ product_id: product_id, variation_id: variation_id, quantity: new_quantity, mode: mode }),
+        dataType: "json",
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        beforeSend: function () {
+            console.log("Initiating API call");
+        },
+        success: function (data) {
+            if (data.Success) {
+                var updated_cart_count = data.Data;
+                $('.wbr-cmp-view-cart-button').find('.badge').html(updated_cart_count).show();
+
+                //Refresh Page if Cart Page
+                wbr_reload_if_cart_page(null);
+            }
+            else {
+                //alert(data.Message);
+                console.log(data.Message);
+            }
+        },
+        complete: function () {
+            Pace.stop();
+        },
+        error: function (response) {
+            console.log(response);
+            Pace.stop();
+        },
+        failure: function (response) {
+            Pace.stop();
+            console.log(response);
+        }
+    });
+}
+
+
+function wbr_clear_cart() {
+    $('.wbr-cmp-view-cart-button').find('.badge').html(0).show();
+}
+
+function wbr_clear_cart_handler() {
+    var $e = $('.wbr-trigger-clear-cart');
+    if ($e.length > 0) {
+        wbr_clear_cart()
+    }
+}
+
+//Sharing
+function sharingLinks() {
+    var share_link = window.location.href;
+    var share_title = document.title;
+    $('.shareToFacebook').prop("href", "https://www.facebook.com/sharer/sharer.php?u=" + share_link)
+    $('.shareToLinkedIn').prop("href", "https://www.linkedin.com/shareArticle?mini=true&url=" + share_link + "&title=" + share_title + "&summary=&source=")
+    $('.shareToTwitter').prop("href", "https://twitter.com/home?status=" + share_link)
+    $('.shareToPinterest').prop("href", "https://pinterest.com/pin/create/button/?url=" + share_link)
+    $('.shareToWhatsApp').prop("href", "whatsapp://send?text=" + share_link)
+    $('.shareToMail').prop("href", "mailto:?body=" + share_link);
+    //Copy Link
+    $('.shareToCopyLink').on('click', function (element) {
+        $(this).parent().find('p').html('Link Copied');
+        $(this).removeClass('color-blue-dark').addClass('color-green-dark');
+        $(this).find('i').attr('class', '');
+        $(this).find('i').attr('class', 'flaticon-checked font-12');
+        setTimeout(function () {
+            $('.shareToCopyLink').parent().find('p').html('Copy Link');
+            $('.shareToCopyLink').removeClass('color-green-dark').addClass('color-blue-dark');
+            $('.shareToCopyLink').find('i').attr('class', '');
+            $('.shareToCopyLink').find('i').attr('class', 'flaticon-share font-14');
+        }, 1000);
+        var $temp = $("<input>");
+        $("body").append($temp);
+        $temp.val(share_link).select();
+        document.execCommand("copy");
+        $temp.remove();
+    });
+
+};
+
+
+$(document).ready(function () {
+    'use strict'
+
+
+    wbr_init($('#page'));
+
+
+
+
+    // $('.modal').each(function(index, modal) {
+    //     $(modal).on('show.bs.modal', function(){
+    //         history.pushState({modal:$(modal).attr('id')},'', window.location.href + '#modal');
+    //     }).on('hide.bs.modal', function(){
+    //         if(window.location.hash === '#modal'){
+    //             history.back();
+    //         }
+    //     });
+    // });
+
+
+}); // document ready ends
+
+
+function wbr_have_permit_init(ths, $input_permit_container) {
+    var s = $(ths).children("option:selected").val();
+    if (s == 'yes') {
+        $input_permit_container.show();
+        $('.wbr-without-permit-amount-total').show();
+        $('.wbr-permit-amount-total').hide();
+        $('.wbr-permit-amount').hide();
+    }
+    else if (s == 'no') {
+        $input_permit_container.hide();
+        $('.wbr-without-permit-amount-total').hide();
+        $('.wbr-permit-amount-total').show();
+        $('.wbr-permit-amount').show();
+    }
+    else {
+        $input_permit_container.hide();
+        $('.wbr-without-permit-amount-total').show();
+        $('.wbr-permit-amount-total').hide();
+        $('.wbr-permit-amount').hide();
+    }
+}
+
+function wbr_misc_methods() {
+
+    var $place_order = $('.wbr-cmp-place-order');
+    var $submit_order = $('.wbr-cmp-submit-order');
+    var $have_permit = $('.wbr-input-have_permit');
+    var $input_permit_container = $('.wbr-inp-permit-container');
+    var $do_side_click = $('.do-side-click');
+    var $permit = $('.wbr-input-permit');
+    var $shopCustomNote = $('.wbr-input-shop-custom-note');
+
+    $shopCustomNote.on('change', function () {
+
+        var url = ajax_baseURL + "Cart/UpdateShopCustomNote";
+
+        $.ajax({
+            url: url,
+            data: JSON.stringify({ ShopCustomNote: $shopCustomNote.val() }),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function () { Pace.start(); },
+            success: function (data) {
+
+            },
+            complete: function () {
+                Pace.stop();
+            },
+            error: function (response) {
+                console.log(response);
+                Pace.stop();
+            },
+            failure: function (response) {
+                Pace.stop();
+                console.log(response);
+            }
+        });
+
+    });
+
+    //$do_side_click.off('click', "**").on('click', function () {
+    //    var $ths = $(this);
+    //    $ths.siblings('a').trigger('click');
+    //});
+
+    //$permit.on('keyup', function () {
+    //    var val = $(this).val();
+    //    console.log(val);
+    //    window.createCookie('permit_number', val, 60);
+    //});
+
+    //$have_permit.on('change', function () {
+
+    //    var result = $(this).children("option:selected").val();
+    //    if (result == 'yes') {
+    //        $input_permit_container.show();
+    //        $('.wbr-without-permit-amount-total').show();
+    //        $('.wbr-permit-amount-total').hide();
+    //        $('.wbr-permit-amount').hide();
+    //    }
+    //    else if (result == 'no') {
+
+    //        window.createCookie('permit_number', '', 60);
+
+    //        $input_permit_container.hide();
+    //        $('.wbr-without-permit-amount-total').hide();
+    //        $('.wbr-permit-amount-total').show();
+    //        $('.wbr-permit-amount').show();
+    //    }
+    //    else {
+    //        $input_permit_container.hide();
+    //        $('.wbr-without-permit-amount-total').show();
+    //        $('.wbr-permit-amount-total').hide();
+    //        $('.wbr-permit-amount').hide();
+    //    }
+    //});
+
+    //$have_permit.on('change', function () {
+
+    //    var result = $(this).children("option:selected").val();
+    //    if (result == 'yes') {
+    //        $input_permit_container.show();
+    //        $('.wbr-without-permit-amount-total').show();
+    //        $('.wbr-permit-amount-total').hide();
+    //        $('.wbr-permit-amount').hide();
+    //    }
+    //    else if (result == 'no') {
+
+    //        window.createCookie('permit_number', '', 60);
+
+    //        $input_permit_container.hide();
+    //        $('.wbr-without-permit-amount-total').hide();
+    //        $('.wbr-permit-amount-total').show();
+    //        $('.wbr-permit-amount').show();
+    //    }
+    //    else {
+    //        $input_permit_container.hide();
+    //        $('.wbr-without-permit-amount-total').show();
+    //        $('.wbr-permit-amount-total').hide();
+    //        $('.wbr-permit-amount').hide();
+    //    }
+    //});
+
+    $('a').off('click', "**").on('click', function (e) {
+        Pace.restart(); Pace.start();
+    });
+
+    $place_order.off('click', "**").on('click', function (e) {
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        var age_acceptance = $('#wbr-input-age-acceptance').is(':checked');
+        var permit = $('.wbr-input-permit').val();
+        var $have_permit = $('.wbr-input-have_permit');
+        var s = $have_permit.val();
+
+        var place_order = false;
+
+        if (s === 'Yes') {
+            if (permit.length > 0) {
+                place_order = true;
+            }
+            else {
+                alert('Please provide permit number details.');
+            }
+        }
+        else if (s === 'No') {
+            place_order = true;
+            permit = '';
+            permit_query = '';
+        }
+        else {
+            alert('Please provide permit number details.');
+        }
+
+
+        if (place_order === true) {
+            if (age_acceptance !== true) {
+                place_order = false;
+                alert('You need to be atleast 25 or above to place an order.\nPlease accept to confirm that you are 25 or above in age.');
+            }
+            else {
+                place_order = true;
+            }
+        }
+
+        if (place_order === true) {
+
+            document.getElementById('selectTimeSlotForm').submit();
+            //PlaceOrder();
+            //window.location = link + permit_query;
+        }
+    });
+
+
+    $submit_order.off('click', "**").on('click', function (e) {
+
+        var timeSlotSelected = $(".time-slot-item.active").length == 1;
+
+        if (timeSlotSelected == true) {
+            PlaceOrder();
+        }
+        else {
+            alert("Please select any one time slot");
+        }
+
+    });
+
+    function PlaceOrder() {
+
+        var $message_box = $('.message-box');
+        $message_box.html("");
+
+        Pace.restart();
+
+        var $fromDateTime = $('.time-slot-item.active').attr("slot-fromDate");
+        var $toDateTime = $('.time-slot-item.active').attr("slot-toDate");
+        var $slotClosingTime = $('.time-slot-item.active').attr("slot-closingTime");
+        var $timeSlotLookupID = $('.time-slot-item.active').attr("slot-TimeSlotLookupID");
+        var $etaDuration = $('.time-slot-item.active').attr("eta-duration");
+
+        $submit_order.prop('disabled', true).html('<div class="spinner-border text-light" role="status"><span class="sr-only"></span></div>');
+
+        var url = ajax_baseURL + "Order/PlaceOrder";
+
+        $.ajax({
+            url: url,
+            data: JSON.stringify({ fromDateTime: $fromDateTime, toDateTime: $toDateTime, slotClosingTime: $slotClosingTime, TimeSlotLookupID: $timeSlotLookupID, etaDuration: $etaDuration }),
+            dataType: "json",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            beforeSend: function () { },
+            success: function (data) {
+                if (data.Success) {
+                    window.location = ajax_baseURL + "Order/OrderConfirmation";
+                }
+                else {
+                    $message_box.html('<div class="text-danger">' + data.Message + '</div>')
+                    console.log(data.Message);
+                    Pace.stop();
+                    $submit_order.prop('disabled', false).html('PLACE ORDER</div>');
+                }
+            },
+            complete: function () {
+                Pace.stop();
+            },
+            error: function (response) {
+                console.log(response);
+                Pace.stop();
+                $submit_order.prop('disabled', false).html('PLACE ORDER</div>');
+            },
+            failure: function (response) {
+                Pace.stop();
+                console.log(response);
+                $submit_order.prop('disabled', false).html('PLACE ORDER</div>');
+            }
+        });
+    }
+
+
+    $('.wbr-inp-customer-selected-store').on('change', function () {
+        var link = $place_order.attr('href');
+        var s = $(this).children("option:selected").val();
+        var new_link = link.split('store=');
+        $place_order.attr('data-href', new_link[0] + 'store=' + s);
+    });
+
+    //Desktop Product Sorting
+    $('#ddlProductSortyBy').on('change', function () {
+        SortProductsBy($(this).val());
+    });
+}
+
+
+
+
+function trim_from_right(myString, str) {
+    if (myString.charAt(myString.length - 1) == str) {
+        return myString.substr(0, myString.length - str.length);
+    }
+    else {
+        return str;
+    }
+}
+
+// ;(function ( $, window, document, undefined ){
+//     $(document).ready(function(){
+
+//         $('.wbr-cart-items')
+
+//     });
+// })( jQuery, window, document );
+
+// ;(function ( $, window, document, undefined ){
+//     $(document).ready(function(){
+
+//     });
+// })( jQuery, window, document );
