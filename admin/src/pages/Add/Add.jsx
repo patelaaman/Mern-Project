@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import "./Add.css"
 import { assets } from '../../assets/assets'
 import axios from "axios"
@@ -19,6 +19,10 @@ const [data,setData] = useState({
      setData(data=>({...data,[name]:value}))
    } 
 
+   useEffect(()=>{
+      console.log(data);
+      
+   },[data])
    const onSubmitHander =async(event)=>{
        event.preventDefault();
        const formData = new FormData();
@@ -76,7 +80,7 @@ const [data,setData] = useState({
                 <input onChange={onChangeHandler} value={data.price} type="Number" name="price" placeholder='$20'></input>
             </div>
           </div >
-          <button onClick={onSubmitHander} type="submit" className='add-btn'>ADD</button>
+          <button  type="submit" className='add-btn'>ADD</button>
         </form>
       
     </div>

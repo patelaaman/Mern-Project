@@ -5,18 +5,18 @@ import foodRouter from "./routes/footRoute.js"
 
 // app Config
 const app = express()
-const port =4000
+const port =4001
 
 
 // middleware
 app.use(express.json()) 
 app.use(cors())
 
-
+/*
 app.get("/",(req,res)=>{
     res.send("API  Working")
 
-})
+})*/
 
 // Db Connection
 connectDB();
