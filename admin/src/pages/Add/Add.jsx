@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import "./Add.css"
 import { assets } from '../../assets/assets'
 import axios from "axios"
-const Add = () => {
+import { toast } from 'react-toastify'
+const Add = ({url}) => {
 
-const url = "http://localhost:4000"
 const [image, setImage] = useState(false)
 const [data,setData] = useState({
     name:"",
@@ -19,10 +19,7 @@ const [data,setData] = useState({
      setData(data=>({...data,[name]:value}))
    } 
 
-   useEffect(()=>{
-      console.log(data);
-      
-   },[data])
+  
    const onSubmitHander =async(event)=>{
        event.preventDefault();
        const formData = new FormData();
@@ -31,7 +28,7 @@ const [data,setData] = useState({
        formData.append("price",Number(data.price))
        formData.append("category",data.category)
        formData.append("image",image)
-       const response = await axios.post(`${url}/api/food/add`,formData)
+       const response = await axios.post(`${url}/api/food/add`,formData);
        if(response.data.success){
           setData({
             name:"",
@@ -40,9 +37,10 @@ const [data,setData] = useState({
             category:"Wine"
           })
           setImage(false)
+          toast.success(response.data.message)
        }
        else{
-
+           toast.error(response.data.message)
        }
 
    }
@@ -54,7 +52,7 @@ const [data,setData] = useState({
             <p>Upload Image</p>
             <label htmlFor='image'>
                 <img src={image?URL.createObjectURL(image):assets.uploadArea}></img>
-            </label>
+            </label> 
          <input onChange={(e)=>setImage(e.target.files[0])} type='file' id="image" hidden required></input>
           </div>
           <div className="add-product-name flex-col">

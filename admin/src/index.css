@@ -24,3 +24,6 @@ hr{
   display: flex;
   
 }
+.cursor{
+  cursor: pointer;
+}
