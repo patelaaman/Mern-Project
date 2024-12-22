@@ -2,8 +2,8 @@ import express from "express"
 import cors from "cors"
 import { connectDB } from "./Config/db.js"
 import foodRouter from "./routes/footRoute.js"
-import userRouter from "./routes/userRoute.js"
 import "dotenv/config.js"
+import userRouter from "./routes/userRoute.js"
 
 // app Config
 const app = express()
@@ -27,7 +27,7 @@ connectDB();
 // api  endpoint
 app.use("/api/food",foodRouter)
 app.use("/image",express.static("uploads"))
-app.use("/api/user",userRouter)
+app.use("/api/admin",userRouter)
 
 app.listen(port,()=>{
     console.log(`Server Started on http://localhost:${port}`)
