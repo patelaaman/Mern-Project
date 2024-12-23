@@ -64,7 +64,10 @@ import  appstore from "./appstore.jpeg"
 import play from "./play.jpeg"
 import cross_icon from "./cross_icon.jpeg"
 import close from "./close.png"
-
+import bag_icon from "./bag_icon.jpg"
+import log from "./log.jpg"
+import profile_icon from "./profile_icon.jpg"
+import bakardi from "bakardi.jpg"
 
 
 
@@ -84,7 +87,11 @@ export const  assets = {
     play,
     appstore,
     cross_icon,
-    close
+    close,
+    log,
+    bag_icon,
+    profile_icon,
+    bakardi
     
     
 }

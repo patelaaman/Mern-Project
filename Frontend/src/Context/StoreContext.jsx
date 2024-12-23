@@ -1,11 +1,16 @@
+import axios from "axios";
 import { createContext, useEffect, useState } from "react";
-import { Liquid_list } from "../assets/assets";
+import { useSearchParams } from "react-router-dom";
 export const StoreContext = createContext(null)
 
 
 const StoreContextProvider=(props)=>{
 
      const [cartItems, setCartItems] = useState({})
+     const url = "http://localhost:4001"
+
+     const [token,setToken] = useState("")
+     const [Liquid_list,setLiquidList] = useState([])
       
      const addToCart = (itemId)=>{
         if(!cartItems[itemId]){
@@ -32,13 +37,34 @@ const StoreContextProvider=(props)=>{
         return totalAmount;
      }
     
+    const fetchFoodList = async(requestAnimationFrame,res)=>{
+        const response = await axios.get(url+"/api/food/list");
+        setLiquidList(localStorage.getItem("token"));
+    }
+     
+    useEffect(()=>{
+        
+         async function loadData(){
+            await fetchFoodList();
+            if(localStorage.getItem("token")){
+                setToken(localStorage.getItem("token"));
+    
+             }
+         }
+         loadData();
+
+    },[])
+
     const contextValue ={
         Liquid_list,
         cartItems,
         setCartItems,
         addToCart,
         removeFromCart,
-        getTotalCartAmount
+        getTotalCartAmount,
+        url,
+        token,
+        setToken
 
     }
     return(
