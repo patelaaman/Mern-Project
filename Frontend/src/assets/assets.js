@@ -1,9 +1,9 @@
-import logo from "./logo.png"
-import search_Icon from "./search_icon.jpeg"
-import basket_Icon from "./basket.jpeg"
-import Rating_Starts from "./Rating_Starts.jpg"
+import logo from "./logo.png";
+import search_Icon from "./search_icon.jpeg";
+import basket_Icon from "./basket.jpeg";
+import Rating_Starts from "./Rating_Starts.jpg";
 import addIcon from "./addIcon.jpg"
-import addGreen from "./addGreen.png"
+import addGreen from "./addGreen.png";
 import redRemove from "./redRemove.jpg"
 import remove from "./remove.jpg"
 import wine from "./wine.jpg"
@@ -67,7 +67,7 @@ import close from "./close.png"
 import bag_icon from "./bag_icon.jpg"
 import log from "./log.jpg"
 import profile_icon from "./profile_icon.jpg"
-import bakardi from "bakardi.jpg"
+import bakardi from "./bakardi.jpg"
 
 
 

@@ -1,6 +1,5 @@
 import axios from "axios";
 import { createContext, useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
 export const StoreContext = createContext(null)
 
 
@@ -37,9 +36,9 @@ const StoreContextProvider=(props)=>{
         return totalAmount;
      }
     
-    const fetchFoodList = async(requestAnimationFrame,res)=>{
+    const fetchFoodList = async(req,res)=>{
         const response = await axios.get(url+"/api/food/list");
-        setLiquidList(localStorage.getItem("token"));
+        setLiquidList(response.data.data);
     }
      
     useEffect(()=>{
