@@ -49,7 +49,7 @@ const  getCart = async (req,res)=>{
         res.json({success:true,cartData})
       }catch(error){
           console.log(error);
-          res.json({uccess:false,message:"Error"})
+          res.json({success:false,message:"Error"})
           
       }
 }
