@@ -68,10 +68,11 @@ import bag_icon from "./bag_icon.jpg"
 import log from "./log.jpg"
 import profile_icon from "./profile_icon.jpg"
 import bakardi from "./bakardi.jpg"
-
+import parcel_icon from "./parcel_icon.jpeg"
 
 
 export const  assets = {
+    parcel_icon,
     logo,
     search_Icon,
     basket_Icon,
